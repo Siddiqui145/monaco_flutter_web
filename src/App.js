@@ -94,31 +94,35 @@ function App() {
     }
   }, [monaco]);
 
-  // Listen for postMessage from Flutter WebView
-  useEffect(() => {
-    const handleMessage = (event) => {
-  if (typeof event.data === "string") {
-    if (editorRef.current) {
-      const editor = editorRef.current;
-      const model = editor.getModel();
-      if (model) {
-        model.setValue(event.data);
+ useEffect(() => {
+  const handleMessage = (event) => {
+    if (typeof event.data === "string") {
+      const incomingCode = event.data;
+
+      if (editorRef.current) {
+        const editor = editorRef.current;
+        const model = editor.getModel();
+        if (model) {
+          model.setValue(incomingCode);
+        }
+      } else {
+        // Temporarily store it; apply it once the editor mounts
+        setCode(incomingCode);
       }
-    } else {
-      setCode(event.data); // fallback
     }
-  }
-};
+  };
 
-    window.addEventListener("message", handleMessage);
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
+}, []);
 
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, []);
-
-  function handleEditorDidMount(editor, monaco) {
+function handleEditorDidMount(editor, monaco) {
   editorRef.current = editor;
+
+  // If code was received before editor mounted
+  if (code && code !== editor.getValue()) {
+    editor.setValue(code);
+  }
 }
 
   return (
@@ -127,7 +131,7 @@ function App() {
         height="100%"
         language="dart"
         theme="custom-dark"
-        value={code}
+        defaultValue={code}
         onMount={handleEditorDidMount}
         options={{
           fontSize: 14,
