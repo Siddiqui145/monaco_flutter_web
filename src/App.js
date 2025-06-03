@@ -5,6 +5,15 @@ function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
   const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
+  const [isEditorReady, setEditorReady] = useState(false);
+
+  window.addEventListener("error", (e) => {
+  console.error("Global error:", e.message, e.error);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Unhandled Promise Rejection:", e.reason);
+});
+
 
   // Theme + Dart setup
   useEffect(() => {
@@ -25,8 +34,11 @@ function App() {
           "editor.foreground": "#cccccc",
         },
       });
+      
 
+      if (!monaco.languages.getLanguages().some(lang => lang.id === "dart")) {
       monaco.languages.register({ id: "dart" });
+      }
 
       monaco.languages.setMonarchTokensProvider("dart", {
         tokenizer: {
@@ -91,50 +103,47 @@ function App() {
         ],
         symbols: /[=><!~?:&|+\-*\/\^%]+/
       });
+      setEditorReady(true);
     }
   }, [monaco]);
 
-  // Listen for postMessage from Flutter WebView
-  useEffect(() => {
-    const handleMessage = (event) => {
-  if (typeof event.data === "string") {
-    if (editorRef.current) {
-      const editor = editorRef.current;
-      const model = editor.getModel();
-      if (model) {
-        model.setValue(event.data);
-      }
-    } else {
-      setCode(event.data); // fallback
+useEffect(() => {
+  const handleMessage = (event) => {
+    if (typeof event.data === "string") {
+      setCode(event.data);
     }
-  }
-};
+  };
 
-    window.addEventListener("message", handleMessage);
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
+}, []);
 
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, []);
-
-  function handleEditorDidMount(editor, monaco) {
+function handleEditorDidMount(editor, monaco) {
   editorRef.current = editor;
+
+  // If code was received before editor mounted
+  if (code && code !== editor.getValue()) {
+    editor.setValue(code);
+  }
 }
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
-      <Editor
-        height="100%"
-        language="dart"
-        theme="custom-dark"
-        value={code}
-        onMount={handleEditorDidMount}
-        options={{
-          fontSize: 14,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-        }}
-      />
+  {isEditorReady && (
+  <Editor
+    height="100%"
+    language="dart"
+    theme="custom-dark"
+    value={code}
+    onChange={(val) => setCode(val)}
+    onMount={handleEditorDidMount}
+    options={{
+      fontSize: 14,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+    }}
+  />
+)}
     </div>
   );
 }
