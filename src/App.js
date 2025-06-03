@@ -5,6 +5,15 @@ function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
   const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
+  const [isEditorReady, setEditorReady] = useState(false);
+
+  window.addEventListener("error", (e) => {
+  console.error("Global error:", e.message, e.error);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Unhandled Promise Rejection:", e.reason);
+});
+
 
   // Theme + Dart setup
   useEffect(() => {
@@ -25,8 +34,11 @@ function App() {
           "editor.foreground": "#cccccc",
         },
       });
+      
 
+      if (!monaco.languages.getLanguages().some(lang => lang.id === "dart")) {
       monaco.languages.register({ id: "dart" });
+      }
 
       monaco.languages.setMonarchTokensProvider("dart", {
         tokenizer: {
@@ -91,24 +103,14 @@ function App() {
         ],
         symbols: /[=><!~?:&|+\-*\/\^%]+/
       });
+      setEditorReady(true);
     }
   }, [monaco]);
 
- useEffect(() => {
+useEffect(() => {
   const handleMessage = (event) => {
     if (typeof event.data === "string") {
-      const incomingCode = event.data;
-
-      if (editorRef.current) {
-        const editor = editorRef.current;
-        const model = editor.getModel();
-        if (model) {
-          model.setValue(incomingCode);
-        }
-      } else {
-        // Temporarily store it; apply it once the editor mounts
-        setCode(incomingCode);
-      }
+      setCode(event.data);
     }
   };
 
@@ -127,18 +129,21 @@ function handleEditorDidMount(editor, monaco) {
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
-      <Editor
-        height="100%"
-        language="dart"
-        theme="custom-dark"
-        defaultValue={code}
-        onMount={handleEditorDidMount}
-        options={{
-          fontSize: 14,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-        }}
-      />
+  {isEditorReady && (
+  <Editor
+    height="100%"
+    language="dart"
+    theme="custom-dark"
+    value={code}
+    onChange={(val) => setCode(val)}
+    onMount={handleEditorDidMount}
+    options={{
+      fontSize: 14,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+    }}
+  />
+)}
     </div>
   );
 }
