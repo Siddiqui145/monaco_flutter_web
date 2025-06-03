@@ -4,65 +4,107 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
-  const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
   const [isEditorReady, setEditorReady] = useState(false);
+  const defaultCode = `void main() {\n  print('Hello from Monaco!');\n}`;
 
-  // Error handlers for debugging
-  window.addEventListener("error", (e) => {
-    console.error("Global error:", e.message, e.error);
-  });
-  window.addEventListener("unhandledrejection", (e) => {
-    console.error("Unhandled Promise Rejection:", e.reason);
-  });
-
-  // Monaco Setup (theme + dart)
+  // Setup Dart language + Theme
   useEffect(() => {
-    if (monaco) {
-      monaco.editor.defineTheme("custom-dark", {
-        base: "vs-dark",
-        inherit: true,
-        rules: [
-          { token: "comment", foreground: "7f848e", fontStyle: "italic" },
-          { token: "keyword", foreground: "c586c0" },
-          { token: "number", foreground: "b5cea8" },
-        ],
-        colors: {
-          "editor.background": "#1e1e1e",
-          "editorLineNumber.foreground": "#858585",
-          "editorLineHighlightBackground": "#2b2b2b",
-          "editorCursor.foreground": "#ffffff",
-          "editor.foreground": "#cccccc",
-        },
-      });
+    if (!monaco) return;
 
-      if (!monaco.languages.getLanguages().some(lang => lang.id === "dart")) {
-        monaco.languages.register({ id: "dart" });
-      }
+    monaco.editor.defineTheme("custom-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "7f848e", fontStyle: "italic" },
+        { token: "keyword", foreground: "c586c0" },
+        { token: "number", foreground: "b5cea8" },
+      ],
+      colors: {
+        "editor.background": "#1e1e1e",
+        "editorLineNumber.foreground": "#858585",
+        "editorLineHighlightBackground": "#2b2b2b",
+        "editorCursor.foreground": "#ffffff",
+        "editor.foreground": "#cccccc",
+      },
+    });
 
-      monaco.languages.setMonarchTokensProvider("dart", {
-        tokenizer: { /*...*/ }, // keep as-is
-        keywords: [ /*...*/ ],
-        operators: [ /*...*/ ],
-        symbols: /[=><!~?:&|+\-*\/\^%]+/
-      });
-
-      setEditorReady(true);
+    if (!monaco.languages.getLanguages().some((lang) => lang.id === "dart")) {
+      monaco.languages.register({ id: "dart" });
     }
+
+    monaco.languages.setMonarchTokensProvider("dart", {
+      tokenizer: {
+        root: [
+          [/[a-z_$][\w$]*/, {
+            cases: {
+              '@keywords': 'keyword',
+              '@default': 'identifier'
+            }
+          }],
+          [/[A-Z][\w\$]*/, 'type.identifier'],
+          { include: '@whitespace' },
+          [/[{}()\[\]]/, '@brackets'],
+          [/[<>](?!@symbols)/, '@brackets'],
+          [/@symbols/, {
+            cases: {
+              '@operators': 'operator',
+              '@default': ''
+            }
+          }],
+          [/\d+/, 'number'],
+          [/[;,.]/, 'delimiter'],
+          [/"([^"\\]|\\.)*$/, 'string.invalid'],
+          [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }]
+        ],
+        string: [
+          [/[^\\"]+/, 'string'],
+          [/\\./, 'string.escape.invalid'],
+          [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
+        ],
+        whitespace: [
+          [/[ \t\r\n]+/, 'white'],
+          [/\/\*\*(?!\/)/, 'comment.doc', '@jsdoc'],
+          [/\/\*/, 'comment', '@comment'],
+          [/\/\/.*$/, 'comment']
+        ],
+        comment: [
+          [/[^\/*]+/, 'comment'],
+          [/\*\//, 'comment', '@pop'],
+          [/[\/*]/, 'comment']
+        ],
+        jsdoc: [
+          [/[^\/*]+/, 'comment.doc'],
+          [/\*\//, 'comment.doc', '@pop'],
+          [/[\/*]/, 'comment.doc']
+        ]
+      },
+      keywords: [
+        "abstract", "else", "import", "super", "as", "enum", "in", "switch",
+        "assert", "export", "interface", "sync", "async", "extends", "is", "this",
+        "await", "extension", "late", "throw", "break", "external", "library", "true",
+        "case", "factory", "mixin", "try", "catch", "false", "new", "typedef", "class",
+        "final", "null", "var", "const", "finally", "on", "void", "continue", "for",
+        "operator", "while", "covariant", "Function", "part", "with", "default", "get",
+        "required", "yield", "deferred", "hide", "rethrow", "do", "if", "return",
+        "dynamic", "implements", "set"
+      ],
+      operators: [
+        '=', '>', '<', '!', '~', '?', '??', '==', '<=', '>=', '!=', '&&', '||',
+        '++', '--', '+', '-', '*', '/', '&', '|', '^', '%', '<<', '>>', '>>>',
+        '+=', '-=', '*=', '/=', '&=', '|=', '^=', '%=', '<<=', '>>=', '>>>='
+      ],
+      symbols: /[=><!~?:&|+\-*\/\^%]+/
+    });
+
+    setEditorReady(true);
   }, [monaco]);
 
-  // ✅ Receive dynamic code from Flutter and update editor if ready
+  // Receive Flutter code
   useEffect(() => {
     const handleMessage = (event) => {
-      if (typeof event.data === "string") {
-        const newCode = event.data;
-
-        // ✅ Update editor directly if it's mounted
-        if (editorRef.current && editorRef.current.getValue() !== newCode) {
-          editorRef.current.setValue(newCode);
-        }
-
-        // Also sync internal state
-        setCode(newCode);
+      if (typeof event.data === "string" && editorRef.current) {
+        console.log("Received Dart code:", event.data);
+        editorRef.current.setValue(event.data);
       }
     };
 
@@ -70,24 +112,19 @@ function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // When editor mounts, store the ref and sync any pre-loaded code
-  function handleEditorDidMount(editor, monacoInstance) {
+  const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
-
-    if (code && code !== editor.getValue()) {
-      editor.setValue(code);
-    }
-  }
+    editor.setValue(defaultCode);
+  };
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
       {isEditorReady && (
         <Editor
           height="100%"
-          language="dart"
+          defaultLanguage="dart"
+          defaultValue={defaultCode}
           theme="custom-dark"
-          value={code}
-          onChange={(val) => setCode(val)}
           onMount={handleEditorDidMount}
           options={{
             fontSize: 14,
