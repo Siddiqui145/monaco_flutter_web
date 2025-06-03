@@ -1,11 +1,11 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 
 function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
   const [isEditorReady, setEditorReady] = useState(false);
-  const defaultCode = `void main() {\n  print('Hello from Monaco!');\n}`;
+  const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
 
   // Setup Dart language + Theme
   useEffect(() => {
@@ -102,9 +102,12 @@ function App() {
   // Receive Flutter code
   useEffect(() => {
     const handleMessage = (event) => {
-      if (typeof event.data === "string" && editorRef.current) {
+      if (typeof event.data === "string") {
         console.log("Received Dart code:", event.data);
-        editorRef.current.setValue(event.data);
+        setCode(event.data);
+        if (editorRef.current) {
+          editorRef.current.setValue(event.data);
+        }
       }
     };
 
@@ -112,18 +115,18 @@ function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const handleEditorDidMount = (editor) => {
+  const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
-    editor.setValue(defaultCode);
-  };
+    editor.setValue(code); // Initial set
+  }, [code]);
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
       {isEditorReady && (
         <Editor
           height="100%"
-          defaultLanguage="dart"
-          defaultValue={defaultCode}
+          language="dart"
+          value={code}
           theme="custom-dark"
           onMount={handleEditorDidMount}
           options={{
