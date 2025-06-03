@@ -97,10 +97,18 @@ function App() {
   // Listen for postMessage from Flutter WebView
   useEffect(() => {
     const handleMessage = (event) => {
-      if (typeof event.data === "string") {
-        setCode(event.data); // Update editor code
+  if (typeof event.data === "string") {
+    if (editorRef.current) {
+      const editor = editorRef.current;
+      const model = editor.getModel();
+      if (model) {
+        model.setValue(event.data);
       }
-    };
+    } else {
+      setCode(event.data); // fallback
+    }
+  }
+};
 
     window.addEventListener("message", handleMessage);
 
@@ -110,8 +118,8 @@ function App() {
   }, []);
 
   function handleEditorDidMount(editor, monaco) {
-    editorRef.current = editor;
-  }
+  editorRef.current = editor;
+}
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
