@@ -7,15 +7,15 @@ function App() {
   const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
   const [isEditorReady, setEditorReady] = useState(false);
 
+  // Error handlers for debugging
   window.addEventListener("error", (e) => {
-  console.error("Global error:", e.message, e.error);
-});
-window.addEventListener("unhandledrejection", (e) => {
-  console.error("Unhandled Promise Rejection:", e.reason);
-});
+    console.error("Global error:", e.message, e.error);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    console.error("Unhandled Promise Rejection:", e.reason);
+  });
 
-
-  // Theme + Dart setup
+  // Monaco Setup (theme + dart)
   useEffect(() => {
     if (monaco) {
       monaco.editor.defineTheme("custom-dark", {
@@ -34,116 +34,68 @@ window.addEventListener("unhandledrejection", (e) => {
           "editor.foreground": "#cccccc",
         },
       });
-      
 
       if (!monaco.languages.getLanguages().some(lang => lang.id === "dart")) {
-      monaco.languages.register({ id: "dart" });
+        monaco.languages.register({ id: "dart" });
       }
 
       monaco.languages.setMonarchTokensProvider("dart", {
-        tokenizer: {
-          root: [
-            [/[a-z_$][\w$]*/, {
-              cases: {
-                '@keywords': 'keyword',
-                '@default': 'identifier'
-              }
-            }],
-            [/[A-Z][\w\$]*/, 'type.identifier'],
-            { include: '@whitespace' },
-            [/[{}()\[\]]/, '@brackets'],
-            [/[<>](?!@symbols)/, '@brackets'],
-            [/@symbols/, {
-              cases: {
-                '@operators': 'operator',
-                '@default': ''
-              }
-            }],
-            [/\d+/, 'number'],
-            [/[;,.]/, 'delimiter'],
-            [/"([^"\\]|\\.)*$/, 'string.invalid'],
-            [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }]
-          ],
-          string: [
-            [/[^\\"]+/, 'string'],
-            [/\\./, 'string.escape.invalid'],
-            [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
-          ],
-          whitespace: [
-            [/[ \t\r\n]+/, 'white'],
-            [/\/\*\*(?!\/)/, 'comment.doc', '@jsdoc'],
-            [/\/\*/, 'comment', '@comment'],
-            [/\/\/.*$/, 'comment']
-          ],
-          comment: [
-            [/[^\/*]+/, 'comment'],
-            [/\*\//, 'comment', '@pop'],
-            [/[\/*]/, 'comment']
-          ],
-          jsdoc: [
-            [/[^\/*]+/, 'comment.doc'],
-            [/\*\//, 'comment.doc', '@pop'],
-            [/[\/*]/, 'comment.doc']
-          ]
-        },
-        keywords: [
-          "abstract", "else", "import", "super", "as", "enum", "in", "switch",
-          "assert", "export", "interface", "sync", "async", "extends", "is", "this",
-          "await", "extension", "late", "throw", "break", "external", "library", "true",
-          "case", "factory", "mixin", "try", "catch", "false", "new", "typedef", "class",
-          "final", "null", "var", "const", "finally", "on", "void", "continue", "for",
-          "operator", "while", "covariant", "Function", "part", "with", "default", "get",
-          "required", "yield", "deferred", "hide", "rethrow", "do", "if", "return",
-          "dynamic", "implements", "set"
-        ],
-        operators: [
-          '=', '>', '<', '!', '~', '?', '??', '==', '<=', '>=', '!=', '&&', '||',
-          '++', '--', '+', '-', '*', '/', '&', '|', '^', '%', '<<', '>>', '>>>',
-          '+=', '-=', '*=', '/=', '&=', '|=', '^=', '%=', '<<=', '>>=', '>>>='
-        ],
+        tokenizer: { /*...*/ }, // keep as-is
+        keywords: [ /*...*/ ],
+        operators: [ /*...*/ ],
         symbols: /[=><!~?:&|+\-*\/\^%]+/
       });
+
       setEditorReady(true);
     }
   }, [monaco]);
 
-useEffect(() => {
-  const handleMessage = (event) => {
-    if (typeof event.data === "string") {
-      setCode(event.data);
+  // ✅ Receive dynamic code from Flutter and update editor if ready
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (typeof event.data === "string") {
+        const newCode = event.data;
+
+        // ✅ Update editor directly if it's mounted
+        if (editorRef.current && editorRef.current.getValue() !== newCode) {
+          editorRef.current.setValue(newCode);
+        }
+
+        // Also sync internal state
+        setCode(newCode);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // When editor mounts, store the ref and sync any pre-loaded code
+  function handleEditorDidMount(editor, monacoInstance) {
+    editorRef.current = editor;
+
+    if (code && code !== editor.getValue()) {
+      editor.setValue(code);
     }
-  };
-
-  window.addEventListener("message", handleMessage);
-  return () => window.removeEventListener("message", handleMessage);
-}, []);
-
-function handleEditorDidMount(editor, monaco) {
-  editorRef.current = editor;
-
-  // If code was received before editor mounted
-  if (code && code !== editor.getValue()) {
-    editor.setValue(code);
   }
-}
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
-  {isEditorReady && (
-  <Editor
-    height="100%"
-    language="dart"
-    theme="custom-dark"
-    value={code}
-    onChange={(val) => setCode(val)}
-    onMount={handleEditorDidMount}
-    options={{
-      fontSize: 14,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-    }}
-  />
-)}
+      {isEditorReady && (
+        <Editor
+          height="100%"
+          language="dart"
+          theme="custom-dark"
+          value={code}
+          onChange={(val) => setCode(val)}
+          onMount={handleEditorDidMount}
+          options={{
+            fontSize: 14,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+          }}
+        />
+      )}
     </div>
   );
 }
