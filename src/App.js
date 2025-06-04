@@ -5,9 +5,9 @@ function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
   const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [isEditorReady, setEditorReady] = useState(false);
 
-  // Setup Dart language and dark theme
+  // Setup theme and Dart language
   useEffect(() => {
     if (!monaco) return;
 
@@ -98,28 +98,32 @@ function App() {
   }, [monaco]);
 
   useEffect(() => {
-  document.body.style.backgroundColor = "#1e1e1e";
-}, []);
+    document.body.style.backgroundColor = "#1e1e1e";
+  }, []);
 
-  // Message listener for Flutter updates
-useEffect(() => {
-  const handleMessage = (event) => {
-    if (typeof event.data === "string" && editorRef.current) {
-      setLoading(false);
-      setCode(event.data);
-      editorRef.current.setValue(event.data);
-    }
-  };
+  // Message listener for updates
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (typeof event.data === "string") {
+        if (editorRef.current) {
+          editorRef.current.setValue(event.data);
+          setCode(event.data);
+        } else {
+          // In case editor isn't ready yet
+          setCode(event.data);
+        }
+        setEditorReady(true);
+      }
+    };
 
-  window.addEventListener("message", handleMessage);
-  return () => window.removeEventListener("message", handleMessage);
-}, []);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
-    if (code) {
-      editor.setValue(code); // Ensure value set even on first mount
-    }
+    if (code) editor.setValue(code);
+    setEditorReady(true);
   }, [code]);
 
   const handleEditorChange = useCallback((value) => {
@@ -127,8 +131,8 @@ useEffect(() => {
   }, []);
 
   return (
-    <div style={{ height: "100vh", width: "100%" }}>
-      {loading ? (
+    <div style={{ height: "100vh", width: "100%", backgroundColor: "#1e1e1e" }}>
+      {!isEditorReady ? (
         <div style={{ color: "white", textAlign: "center", paddingTop: "40vh", fontSize: "20px" }}>
           Loading Editor...
         </div>
@@ -139,10 +143,12 @@ useEffect(() => {
           theme="custom-dark"
           onMount={handleEditorDidMount}
           onChange={handleEditorChange}
+          value={code}
           options={{
             fontSize: 14,
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
+            automaticLayout: true,
           }}
         />
       )}
