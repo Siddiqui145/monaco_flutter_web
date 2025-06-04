@@ -97,21 +97,23 @@ function App() {
     });
   }, [monaco]);
 
-  // Message listener for Flutter updates
   useEffect(() => {
-    const handleMessage = (event) => {
-      if (typeof event.data === "string") {
-        setLoading(false);
-        setCode(event.data);
-        if (editorRef.current) {
-          editorRef.current.setValue(event.data);
-        }
-      }
-    };
+  document.body.style.backgroundColor = "#1e1e1e";
+}, []);
 
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  // Message listener for Flutter updates
+useEffect(() => {
+  const handleMessage = (event) => {
+    if (typeof event.data === "string" && editorRef.current) {
+      setLoading(false);
+      setCode(event.data);
+      editorRef.current.setValue(event.data);
+    }
+  };
+
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
+}, []);
 
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
