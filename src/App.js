@@ -4,7 +4,6 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
-  const [isEditorReady, setEditorReady] = useState(false);
   const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
 
   // Setup Dart language + Theme
@@ -95,18 +94,16 @@ function App() {
       ],
       symbols: /[=><!~?:&|+\-*\/\^%]+/
     });
-
-    setEditorReady(true);
   }, [monaco]);
 
-  // Receive Flutter code
+  // Message listener for Flutter updates
   useEffect(() => {
     const handleMessage = (event) => {
       if (typeof event.data === "string") {
         console.log("Received Dart code:", event.data);
         setCode(event.data);
         if (editorRef.current) {
-          editorRef.current.setValue(event.data);
+          editorRef.current.setValue(event.data); // Immediate update
         }
       }
     };
@@ -117,25 +114,27 @@ function App() {
 
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
-    editor.setValue(code); // Initial set
+    editor.setValue(code); // Set initial value if needed
   }, [code]);
+
+  const handleEditorChange = useCallback((value) => {
+    setCode(value);
+  }, []);
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
-      {isEditorReady && (
-        <Editor
-          height="100%"
-          language="dart"
-          value={code}
-          theme="custom-dark"
-          onMount={handleEditorDidMount}
-          options={{
-            fontSize: 14,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-          }}
-        />
-      )}
+      <Editor
+        height="100%"
+        language="dart"
+        theme="custom-dark"
+        onMount={handleEditorDidMount}
+        onChange={handleEditorChange}
+        options={{
+          fontSize: 14,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+        }}
+      />
     </div>
   );
 }
