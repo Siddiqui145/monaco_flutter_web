@@ -4,12 +4,15 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
-  const [code, setCode] = useState("");
-  const [isEditorReady, setEditorReady] = useState(false);
+  const [pendingCode, setPendingCode] = useState("");
+  const [isMonacoReady, setMonacoReady] = useState(false);
+  const [isEditorMounted, setEditorMounted] = useState(false);
 
-  // Setup theme and Dart language
+  // Set up Dart theme + language
   useEffect(() => {
     if (!monaco) return;
+
+    setMonacoReady(true); // Mark Monaco available
 
     monaco.editor.defineTheme("custom-dark", {
       base: "vs-dark",
@@ -97,22 +100,12 @@ function App() {
     });
   }, [monaco]);
 
-  useEffect(() => {
-    document.body.style.backgroundColor = "#1e1e1e";
-  }, []);
-
-  // Message listener for updates
+  // Save incoming code to state, and apply once ready
   useEffect(() => {
     const handleMessage = (event) => {
       if (typeof event.data === "string") {
-        if (editorRef.current) {
-          editorRef.current.setValue(event.data);
-          setCode(event.data);
-        } else {
-          // In case editor isn't ready yet
-          setCode(event.data);
-        }
-        setEditorReady(true);
+        console.log("Received Dart Code:", event.data);
+        setPendingCode(event.data);
       }
     };
 
@@ -120,38 +113,36 @@ function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const handleEditorDidMount = useCallback((editor) => {
-    editorRef.current = editor;
-    if (code) editor.setValue(code);
-    setEditorReady(true);
-  }, [code]);
+  // Apply code to editor only once everything is ready
+  useEffect(() => {
+    if (isEditorMounted && isMonacoReady && editorRef.current && pendingCode) {
+      editorRef.current.setValue(pendingCode);
+    }
+  }, [isEditorMounted, isMonacoReady, pendingCode]);
 
-  const handleEditorChange = useCallback((value) => {
-    setCode(value);
-  }, []);
+  const handleEditorMount = useCallback((editor) => {
+    editorRef.current = editor;
+    setEditorMounted(true);
+
+    if (pendingCode) {
+      editor.setValue(pendingCode);
+    }
+  }, [pendingCode]);
 
   return (
     <div style={{ height: "100vh", width: "100%", backgroundColor: "#1e1e1e" }}>
-      {!isEditorReady ? (
-        <div style={{ color: "white", textAlign: "center", paddingTop: "40vh", fontSize: "20px" }}>
-          Loading Editor...
-        </div>
-      ) : (
-        <Editor
-          height="100%"
-          language="dart"
-          theme="custom-dark"
-          onMount={handleEditorDidMount}
-          onChange={handleEditorChange}
-          value={code}
-          options={{
-            fontSize: 14,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-          }}
-        />
-      )}
+      <Editor
+        height="100%"
+        defaultLanguage="dart"
+        theme="custom-dark"
+        onMount={handleEditorMount}
+        options={{
+          fontSize: 14,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+        }}
+      />
     </div>
   );
 }
