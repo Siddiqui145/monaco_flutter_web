@@ -6,23 +6,6 @@ function App() {
   const monaco = useMonaco();
   const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
 
-  useEffect(() => {
-  document.body.style.backgroundColor = "#1e1e1e";
-}, []);
-
-
-useEffect(() => {
-  monaco.editor.defineTheme('custom-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [],
-    colors: {
-      'editor.background': '#000000',
-      'editor.foreground': '#FFFFFF',
-    },
-  });
-}, []);
-
 
   // Setup Dart language + Theme
   useEffect(() => {
@@ -117,12 +100,10 @@ useEffect(() => {
   // Message listener for Flutter updates
   useEffect(() => {
     const handleMessage = (event) => {
-  if (typeof event.data === "string" && event.data.trim() !== "") {
+  if (typeof event.data === "string" && event.data.trim()) {
     console.log("Received Dart code:", event.data);
     setCode(event.data);
-    if (editorRef.current) {
-      editorRef.current.setValue(event.data); // Update immediately
-    }
+    editorRef.current?.setValue(event.data);
   }
 };
 
