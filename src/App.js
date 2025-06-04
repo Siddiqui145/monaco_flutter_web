@@ -4,9 +4,10 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 function App() {
   const editorRef = useRef(null);
   const monaco = useMonaco();
-  const [code, setCode] = useState(`void main() {\n  print('Hello from Monaco!');\n}`);
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Setup Dart language + Theme
+  // Setup Dart language and dark theme
   useEffect(() => {
     if (!monaco) return;
 
@@ -100,10 +101,10 @@ function App() {
   useEffect(() => {
     const handleMessage = (event) => {
       if (typeof event.data === "string") {
-        console.log("Received Dart code:", event.data);
+        setLoading(false);
         setCode(event.data);
         if (editorRef.current) {
-          editorRef.current.setValue(event.data); // Immediate update
+          editorRef.current.setValue(event.data);
         }
       }
     };
@@ -114,7 +115,9 @@ function App() {
 
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
-    editor.setValue(code); // Set initial value if needed
+    if (code) {
+      editor.setValue(code); // Ensure value set even on first mount
+    }
   }, [code]);
 
   const handleEditorChange = useCallback((value) => {
@@ -123,18 +126,24 @@ function App() {
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
-      <Editor
-        height="100%"
-        language="dart"
-        theme="custom-dark"
-        onMount={handleEditorDidMount}
-        onChange={handleEditorChange}
-        options={{
-          fontSize: 14,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-        }}
-      />
+      {loading ? (
+        <div style={{ color: "white", textAlign: "center", paddingTop: "40vh", fontSize: "20px" }}>
+          Loading Editor...
+        </div>
+      ) : (
+        <Editor
+          height="100%"
+          language="dart"
+          theme="custom-dark"
+          onMount={handleEditorDidMount}
+          onChange={handleEditorChange}
+          options={{
+            fontSize: 14,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+          }}
+        />
+      )}
     </div>
   );
 }
