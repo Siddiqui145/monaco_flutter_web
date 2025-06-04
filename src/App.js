@@ -103,14 +103,14 @@ function App() {
   // Message listener for Flutter updates
   useEffect(() => {
     const handleMessage = (event) => {
-      if (typeof event.data === "string") {
-        console.log("Received Dart code:", event.data);
-        setCode(event.data);
-        if (editorRef.current) {
-          editorRef.current.setValue(event.data); // Immediate update
-        }
-      }
-    };
+  if (typeof event.data === "string" && event.data.trim() !== "") {
+    console.log("Received Dart code:", event.data);
+    setCode(event.data);
+    if (editorRef.current) {
+      editorRef.current.setValue(event.data); // Update immediately
+    }
+  }
+};
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -131,6 +131,7 @@ function App() {
         height="100%"
         language="dart"
         theme="custom-dark"
+        backgroundColor = "#1e1e1e"
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
         options={{
