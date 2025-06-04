@@ -10,6 +10,20 @@ function App() {
   document.body.style.backgroundColor = "#1e1e1e";
 }, []);
 
+
+useEffect(() => {
+  monaco.editor.defineTheme('custom-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#000000',
+      'editor.foreground': '#FFFFFF',
+    },
+  });
+}, []);
+
+
   // Setup Dart language + Theme
   useEffect(() => {
     if (!monaco) return;
@@ -128,18 +142,18 @@ function App() {
   return (
     <div style={{ height: "100vh", width: "100%" }}>
       <Editor
-        height="100%"
-        language="dart"
-        theme="custom-dark"
-        backgroundColor = "#1e1e1e"
-        onMount={handleEditorDidMount}
-        onChange={handleEditorChange}
-        options={{
-          fontSize: 14,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-        }}
-      />
+  height="100%"
+  language="dart"
+  theme="custom-dark" // <-- this will now use your defined black background
+  onMount={handleEditorDidMount}
+  onChange={handleEditorChange}
+  options={{
+    fontSize: 14,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+  }}
+/>
+
     </div>
   );
 }
